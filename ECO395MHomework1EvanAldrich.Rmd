@@ -1,0 +1,63 @@
+---
+title: "ECO395M Homework1: Evan Aldrich"
+author: "Evan Aldrich"
+date: "2024-01-20"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1: Data visualization: flights at ABIA
+#### Part A
+Make a 2x2 table of conditional probabilities, conditional on the levels of the david.bowie variable. The bottom right entry in your 2x2 table should display P(plays Daft Punk | plays David Bowie).
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+library(tidyverse)
+```
+
+```{r eval=TRUE, echo=FALSE}
+flights = read.csv('ABIA.csv', header=TRUE)
+xtabs(~Cancelled, data=flights)
+
+ggplot(flights) + 
+  geom_bar(aes(x = UniqueCarrier)) 
+
+
+
+ggplot(flights) + 
+  geom_point(aes(x = DepDelay, y = ArrDelay, color=DayOfWeek), width=0.1)
+
+fflights <- flights %>% filter( Dest != 'AUS')
+ggplot(fflights) + 
+  geom_bar(aes(x = Dest)) + coord_flip() 
+```
+
+## Question 2: Wrangling the Olympics
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+top20 = read.csv('olympics_top20.csv', header=TRUE)
+```
+#### Part A
+What is the 95th percentile of heights for female competitors across all Athletics events (i.e., track and field)?
+```{r eval=TRUE, echo=FALSE}
+female <- top20 %>% filter(sex == "F" & sport == "Athletics")
+
+quantile(female$height, 0.95)
+
+
+
+```
+#### Part B
+Which single women's event had the greatest variability in competitor's heights across the entire history of the Olympics, as measured by the standard deviation?
+
+#### Part C
+How has the average age of Olympic swimmers changed over time? Does the trend look different for male swimmers relative to female swimmers? Create a data frame that can allow you to visualize these trends over time, then plot the data with a line graph with separate lines for male and female competitors. Give the plot an informative caption answering the two questions just posed.
+
+## Question 3: K-nearest neighbors: cars
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+sclass = read.csv('sclass.csv', header=TRUE)
+```
+
+
