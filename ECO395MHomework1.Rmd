@@ -1,0 +1,309 @@
+---
+title: "ECO395M Homework1"
+author: "Evan Aldrich, Chenxin Zhu, Somin Lee"
+date: "2024-01-20"
+output: md_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Question 1: Data visualization: flights at ABIA
+
+
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+library(tidyverse)
+library(rsample)
+library(caret)
+library(modelr)
+library(parallel)
+library(foreach)
+library(class)
+library(RANN)
+```
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+ABIA <- read.csv("ABIA.csv")
+
+# top5 airport connected with AUS
+to_aus = ABIA%>%
+  filter(Dest =="AUS")%>%
+  group_by(Origin)%>%
+  summarize(n_of_flight=n())%>%
+  arrange(desc(n_of_flight))%>%as.data.frame()
+
+names(to_aus)=c("airport","n_of_flight")
+
+
+from_aus = ABIA%>%
+  filter(Origin =="AUS")%>%
+  group_by(Dest)%>%
+  summarize(n_of_flight=n())%>%
+  arrange(desc(n_of_flight))%>%as.data.frame()
+
+names(from_aus)=c("airport","n_of_flight")
+
+top_airport=merge(to_aus,from_aus, by="airport")%>%
+  mutate(total_n_of_flight = n_of_flight.x + n_of_flight.y)%>%
+  arrange(desc(total_n_of_flight))%>%
+  top_n(5)%>%as.data.frame()
+
+
+# cancellation of top 5 airport
+cancelled_to_aus = ABIA%>%
+  filter(Dest == "AUS")%>%
+  filter(Origin == "DAL" | Origin == "DFW" | Origin == "IAH" | Origin == "PHX" | Origin == "DEN")%>%
+  group_by(Month,Origin)%>%
+  summarize(n_can = sum(Cancelled),
+            n_fl = n(),
+            r_can = (n_can*100)/n_fl)%>%as.data.frame()
+
+
+ggplot(cancelled_to_aus, aes(x=Month, y=r_can, shape=Origin, color=Origin))+
+         geom_line()+
+         labs(x="Month",
+              y="cancellation rate(%)",
+              title="Montly cancellation rate of top 5 flight to AUS")+
+  scale_x_continuous(breaks = seq(1, 12, by = 1))
+  
+
+
+cancelled_from_aus = ABIA%>%
+  filter(Origin == "AUS")%>%
+  filter(Dest == "DAL" | Dest == "DFW" | Dest == "IAH" | Dest == "PHX" | Dest == "DEN")%>%
+  group_by(Month,Dest)%>%
+  summarize(n_can = sum(Cancelled),
+            n_fl = n(),
+            r_can = (n_can*100)/n_fl)%>%as.data.frame()
+
+
+ggplot(cancelled_from_aus, aes(x=Month, y=r_can, shape=Dest, color=Dest))+
+  geom_line()+
+  labs(x="Month",
+       y="cancellation rate(%)",
+       title="Montly cancellation rate of top 5 flight from AUS ")+
+  scale_x_continuous(breaks = seq(1, 12, by = 1))
+
+
+```
+
+The two graphs above showcase the cancellation rates to and from Austin from Austin's 5 most common flight destinations. We see very similar patterns in the to and from graphs. What we can see is the months that have the highest cancellation rates are the months of March and April as well as well as August and September. This could be explained by the large events taking place in Austin in those months, in early March is South by Southwest, the massive media conference and festival, and in August and September is the massive music festival Austin City Limits. Later in the year we have the smallest cancellation rates. So we see that potentially major events alter the flights across the year but when is the best time of the day to fly, that's observed below.
+
+
+##### What is the best time of the day to fly to minimize delays, and does this change by airline?
+
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+CRSDepTimegroup<-cut(ABIA$CRSDepTime, breaks = c(0, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500, 1600, 1700, 1800, 1900, 2000, 2100, 2200, 2300, Inf), 
+     labels = c("0","1","2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22", "23"))
+
+# Bind the groups to the main data frame
+ABIA <- cbind(ABIA, CRSDepTimegroup)
+
+# Summarize average departure delays
+ABIA_sum = ABIA %>%
+  drop_na(DepDelay) %>%
+  group_by(CRSDepTimegroup) %>%
+  summarise(avg_DepDelay = mean(DepDelay))
+
+# Create a plot
+ggplot(ABIA_sum, aes(x=CRSDepTimegroup, y=avg_DepDelay, group=1)) +
+  geom_line(color="black") +
+  geom_point(aes(color=avg_DepDelay), size=3) +
+  scale_color_gradient(low="blue", high="red") +
+  scale_x_discrete(labels = function(x) str_replace_all(x, "-", "\n")) +
+  labs(x="Time of Day", y="Average Departure Delay (min)", title="Average Departure Delays by Time of Day") +
+  theme_minimal()
+
+ABIA_sum <- ABIA %>%
+  drop_na(DepDelay) %>% filter(UniqueCarrier == "WN" | UniqueCarrier == "AA" | UniqueCarrier == "CO" | UniqueCarrier == "CO" | UniqueCarrier == "YV" | UniqueCarrier == "XE" | UniqueCarrier == "B6" | UniqueCarrier == "OO")%>%
+  group_by(CRSDepTimegroup, UniqueCarrier) %>%
+  summarise(avg_DepDelay = mean(DepDelay, na.rm = TRUE)) %>%
+  ungroup() # ungroup for plotting
+
+# Plot
+ggplot(ABIA_sum, aes(x=CRSDepTimegroup, y=avg_DepDelay, group=UniqueCarrier, color=UniqueCarrier)) +
+  geom_line() +
+  geom_point(size=0.5) +
+  scale_x_discrete(labels = function(x) str_replace_all(x, "-", "\n")) +
+  labs(x="Time of Day", y="Average Departure Delay", title="Average Departure Delays by Time of Day and Airline") +
+  theme_minimal() 
+```
+
+The first of the two graphs above showcases that when we aggregate across all airlines, the average departure delay is much lower in the early mornings. The later in the day we look, and into the evening, the later we can expect an airline to be departing compared to its normally scheduled time. The second graph above splits up the data to showcase the top 7 airlines that fly from Austin and how their departure delays change over the course of the day. Interestingly, we have an outlier at 2pm. Assuming the data is true, this is likely due to airline YV being a local airline based in Phoenix, Arizona and during the early to mid afternoon, it may be particularly hot in Arizona and planes depart late due to whether conditions. Again, we can see a positive trend showing that the later in the day we leave, the later we can expect the departure delay to be. Our Hypothesis is that if a plane departs late it likely arrives late and thus delays add up over the day. This is observed in the next graph.
+
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+
+ggplot(ABIA) + 
+  geom_point(aes(x = DepDelay, y = ArrDelay, color=DayOfWeek), width=0.1) + geom_abline(a=0, b=1)+
+  theme_minimal() 
+
+```
+
+As we can see above, most of the points lie on or above the line that equates departure delay to arrival delay, there are not very many points that lie well below the line. This gives evidence for the trend we see in the previous graphs that when planes depart late from one location, they may arrive even later in the next location, so throughout the day, we can observe an increase in departure delays.
+
+## Question 2: Wrangling the Olympics
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+olympics = read.csv('olympics_top20.csv', header=TRUE)
+```
+#### Part A
+What is the 95th percentile of heights for female competitors across all Athletics events (i.e., track and field)?
+```{r eval=TRUE, echo=FALSE, warning = FALSE}
+
+percentile_95th_height <- olympics %>%
+  filter(sex == 'F', sport == 'Athletics') %>%
+  na.omit(height) %>% # Remove NA values for height
+  summarise(percentile_95 = quantile(height, 0.95)) %>%
+  .$percentile_95
+print(percentile_95th_height)
+
+```
+Across all events under the sport "Athletics" the 95th percentile for female competitors is 183cm or just about 6 feet tall.
+
+#### Part B
+Which single women's event had the greatest variability in competitor's heights across the entire history of the Olympics, as measured by the standard deviation?
+
+```{r, echo=FALSE, warning = FALSE}
+
+std_dev_heights <- olympics %>%
+  filter(sex == 'F') %>%
+  group_by(event) %>%
+  summarise(std_dev_height = sd(height, na.rm = TRUE)) %>%
+  arrange(desc(std_dev_height))
+
+
+max_variability_event <- head(std_dev_heights, 10)
+print(max_variability_event)
+```
+
+Rowing Women’s Coxed Fours has the highest variability of all women's Olympic events measured in the data set. This could be a result of the event only taking place 4 times in the Olympics. Additionally, in rowing, for the most part, the height of the coxswain does not impact the rowing ability of the rowers in the boat (in this case 4) so they may be shorter than the rowers increasing the variability in height of those on the boat. This in-part may explain why 3 of the top 4 events with the most varied heights are rowing events with a coxswain. 
+
+#### Part C
+How has the average age of Olympic swimmers changed over time? Does the trend look different for male swimmers relative to female swimmers? Create a data frame that can allow you to visualize these trends over time, then plot the data with a line graph with separate lines for male and female competitors. Give the plot an informative caption answering the two questions just posed.
+
+```{r, echo=FALSE, warning = FALSE, message = FALSE }
+
+avg_age_over_time <- olympics %>%
+  filter(sport == 'Swimming') %>%
+  group_by(year, sex) %>%
+  summarise(average_age = mean(age, na.rm = TRUE))
+
+# Plot
+ggplot(avg_age_over_time, aes(x = year, y = average_age, color = sex)) +
+  geom_line() +
+  labs(title = "Average Age of Olympic Swimmers Over Time by Gender",
+       x = "Year", y = "Average Age") 
+```
+
+In the graph we see that there is a massive spike in average age in the 1910s and early 1920s. This could likely be a result of the young athletic men serving in World War 1 in the 1910s and not being able to compete in the Olympics. After about 1924 after woman's swimming becomes a top 50 Olympic sport by participants both gender groups fall slightly until the 1950 which likely marks the end of the young athletes involvement in World War 2. Then from 1950, both men and woman gradually increase in age until the end of the data set. For The entire time frame of the data, the average men's age is always at least as high as the women's average age. The men's average is strictly greater than the women's average for each of the Olympics except 2000. So other than this consistent higher average, both men and women's average age for simming follow abut the same trend.
+
+## Question 3: K-nearest neighbors: cars
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+sclass = read.csv('sclass.csv', header=TRUE)
+
+## trim 350
+sclass_350 = sclass %>%
+  filter(trim == 350)
+
+#split the data
+sclass_350_split = initial_split(sclass_350, prop=0.8)
+sclass_350_train = training(sclass_350_split)
+sclass_350_test = testing(sclass_350_split)
+
+#run knn for each k and calculate rmse for test data
+rmse_350_test = foreach(i=2:330, .combine='c') %do% {
+  knn_model = knnreg(price ~ mileage, data=sclass_350_train, k=i)
+  modelr::rmse(knn_model, sclass_350_test)}
+
+#plot
+k_grid=2:330
+rmse_350_test_df = data.frame(rmse_350_test)
+
+
+plot_out=ggplot(rmse_350_test_df, aes(x = k_grid, y = rmse_350_test)) +
+  geom_line(color="blue") +
+  labs(x="K",
+       y="RMSE_test",
+       title="Out-of-sample RMSE (350)")
+plot_out
+
+# find optimal k
+k_grid[which.min(rmse_350_test)]
+
+
+# knn with optimal k 
+knn_opt = knnreg(price ~ mileage, data=sclass_350_train, k=k_grid[which.min(rmse_350_test)])
+modelr::rmse(knn_opt, sclass_350_test)
+
+# plot the fit
+# attach the predictions to the test data frame
+sclass_350_test = sclass_350_test %>%
+  mutate(price_pred = predict(knn_opt, sclass_350_test))
+
+p_test = ggplot(data = sclass_350_test) + 
+  geom_point(mapping = aes(x = mileage, y = price), alpha=0.5) + 
+  ylim(500, 120000)
+
+# now add the predictions
+p_test + geom_line(aes(x = mileage, y = price_pred), color='red', size=1)+
+  labs(title="Prediction of price (350)")
+
+```
+
+The First plot showcases the out-of-sample root mean-squared error (RMSE) for each value of K for the 350 AMG Trim. The first number after the plot if the optimal value of K where the RMSE bottoms out in the plot, and the second number is the Out-of-Sample RMSE that is achieved at the optimal k value. The second plot shows the predicted line for the optimal k-nearest neighbors in the out of sample data. The same process was conducted on the 65 AMG trim below. 
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+## trim 65AMG
+sclass_65amg = sclass %>%
+  filter(trim == "65 AMG")
+
+#split the data
+sclass_65amg_split = initial_split(sclass_65amg, prop=0.8)
+sclass_65amg_train = training(sclass_65amg_split)
+sclass_65amg_test = testing(sclass_65amg_split)
+
+#run knn for each k and calculate rmse for test data
+rmse_65amg_test = foreach(i=2:230, .combine='c') %do% {
+  knn_model = knnreg(price ~ mileage, data=sclass_65amg_train, k=i)
+  modelr::rmse(knn_model, sclass_65amg_test)}
+
+#plot
+k_grid=2:230
+rmse_65_test_df = data.frame(rmse_65amg_test)
+
+
+plot_out=ggplot(rmse_65_test_df, aes(x = k_grid, y = rmse_65amg_test)) +
+  geom_line(color="blue") +
+  labs(x="K",
+       y="RMSE_test",
+       title="Out-of-sample RMSE (65AMG)")
+plot_out
+
+# find optimal k
+k_grid[which.min(rmse_65amg_test)]
+
+
+# knn with optimal k 
+knn_opt = knnreg(price ~ mileage, data=sclass_65amg_train, k=k_grid[which.min(rmse_65amg_test)])
+modelr::rmse(knn_opt, sclass_65amg_test)
+
+# plot the fit
+# attach the predictions to the test data frame
+sclass_65amg_test = sclass_65amg_test %>%
+  mutate(price_pred = predict(knn_opt, sclass_65amg_test))
+
+p_test = ggplot(data = sclass_65amg_test) + 
+  geom_point(mapping = aes(x = mileage, y = price), alpha=0.5) + 
+  ylim(500, 200000)
+
+# now add the predictions
+p_test + geom_line(aes(x = mileage, y = price_pred), color='green', size=1)+
+  labs(title="Prediction of price (65AMG)")
+```
+
+Although the optimal K may change each time the test is run depending on the train-test split, it appears that more times than not, the optimal value of K is higher for the 350 AMG trim. This is likely due to the fact that there is much more data points for the 350 AMG trim so taking more neighbors would not change the prediction as much also, the prices values are closer to each other in the 350 MAG where prices range from around 75,000 to about 20,000 dollars where the 65 AMG trim ranges from around 150,000 to about 25,000 dollars. So again, taking more data points in the k-nearest-neighbors for the 65 trim would likly increase variability of the predicted price.
+
