@@ -1,4 +1,6 @@
-\#Q1 \## finding best linear model
+# Q1
+
+## finding best linear model
 
 lm2 = base modeal (made in class)
 
@@ -13,12 +15,12 @@ lm\_d = lm\_b + lotSize\*livingArea
 lm\_e = lm\_b + landValue\*livingArea
 
     ##      Avg of RMSE
-    ## lm2     66918.60
-    ## lm_a    66873.45
-    ## lm_b    59107.21
-    ## lm_c    59235.31
-    ## lm_d    59144.59
-    ## lm_e    59226.99
+    ## lm2     66101.30
+    ## lm_a    66095.27
+    ## lm_b    58097.42
+    ## lm_c    58227.55
+    ## lm_d    58167.87
+    ## lm_e    58204.04
 
 We can see above that our model lm\_b outperforms lm2 which was the
 “medium” model discussed in class. This new model removes the fireplace
@@ -30,15 +32,15 @@ an optimal k value that is provided below. The K nearest neighbor
 regression regressed on all variables except for pctCollege, sewer,
 waterfront, fireplaces, or fuel.
 
-    ## [1] 103
+    ## [1] 42
 
 In our comparison we look at the average of the out-of-sample root mean
 squared error after running both the knn regression and linear model
 through 50 train-test-splits.
 
     ##              Avg of RMSE
-    ## KNN             76268.87
-    ## Linear model    58567.69
+    ## KNN             74029.94
+    ## Linear model    58570.95
 
 As we can see,The linear model certainly, on average, outperformed the
 KNN regression in terms of average root mean squared error. We have
@@ -97,9 +99,9 @@ no defaults in the set.
 ### Model building
 
     ##       out-of-sample accuracy rate
-    ## base1                   0.9185400
-    ## base2                   0.9343689
-    ## best                    0.9358644
+    ## base1                   0.9190356
+    ## base2                   0.9344311
+    ## best                    0.9361222
 
 Above are the averages of out-of-sample accuracy rates across 50
 train-test-splits for the two base models and a third model which is the
@@ -119,26 +121,26 @@ in the bottom left to 1 in the top right.
 ### Model validation: step 2
 
     ##    fold total_count exp_children actual_children
-    ## 1     1         250         20.8              22
-    ## 2     2         250         20.9              19
-    ## 3     3         250         20.6              20
-    ## 4     4         250         24.3              25
-    ## 5     5         250         19.3              23
-    ## 6     6         250         20.9              21
-    ## 7     7         250         20.5              23
-    ## 8     8         250         15.4              12
-    ## 9     9         250         19.9              19
-    ## 10   10         250         20.6              21
-    ## 11   11         250         27.8              24
-    ## 12   12         250         20.6              21
-    ## 13   13         250         18.3              10
-    ## 14   14         250         20.9              19
-    ## 15   15         250         24.5              22
-    ## 16   16         250         19.9              23
-    ## 17   17         250         18.7              23
-    ## 18   18         250         20.5              18
-    ## 19   19         250         26.5              20
-    ## 20   20         249         19.6              17
+    ## 1     1         250         22.5              17
+    ## 2     2         250         19.0              19
+    ## 3     3         250         23.9              23
+    ## 4     4         250         20.0              17
+    ## 5     5         250         17.6              20
+    ## 6     6         250         24.5              28
+    ## 7     7         250         18.2              15
+    ## 8     8         250         23.6              18
+    ## 9     9         250         20.2              17
+    ## 10   10         250         24.6              26
+    ## 11   11         250         21.3              23
+    ## 12   12         250         19.7              23
+    ## 13   13         250         18.7              17
+    ## 14   14         250         19.7              23
+    ## 15   15         250         21.7              22
+    ## 16   16         250         21.5              18
+    ## 17   17         250         17.7              16
+    ## 18   18         250         23.1              21
+    ## 19   19         250         20.1              21
+    ## 20   20         249         20.3              18
 
 As we can see in the table above, for each of the 20 folds of the data
 we have the expected number of children and the actual number. In some
@@ -156,7 +158,7 @@ for each day.
 
 ![](ECO395MHomework2_files/figure-markdown_strict/unnamed-chunk-10-1.png)
 
-    ## [1] 0.004995874
+    ## [1] 0.004997726
 
 The plot above showcases how the deviance changes as lambda changes. We
 see that the lambda value that minimizes the deviance is presented just
@@ -167,7 +169,7 @@ also provide the optimal threshold to set.
 ![](ECO395MHomework2_files/figure-markdown_strict/unnamed-chunk-11-1.png)
 
     ##   threshold
-    ## 1 0.5001929
+    ## 1 0.5001432
 
 Notice that the ROC curve makes a perfect right angle. This perfect AUC
 score suggests that the model is highly capable of distinguishing
@@ -180,8 +182,8 @@ predictions.
 
     ##          Actual
     ## Predicted   0   1
-    ##         0 798   0
-    ##         1   0 826
+    ##         0 764   0
+    ##         1   0 860
 
     ## [1] "False Positive Rate: 0"
 

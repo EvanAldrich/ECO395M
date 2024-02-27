@@ -22,7 +22,7 @@ library(glmnet) # For lasso regression
 library(pROC) # For ROC curve analysis
 ```
 
-#Q1
+# Q1
 ## finding best linear model
 
 lm2 = base modeal (made in class)
