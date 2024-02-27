@@ -22,6 +22,12 @@ library(parallel)
 library(foreach)
 library(class)
 library(RANN)
+library(ggplot2)
+library(mosaic)
+library(foreach)
+library(caret)
+library(dplyr)
+library(gamlr)
 ```
 
 ```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
