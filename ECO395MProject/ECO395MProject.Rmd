@@ -1,0 +1,98 @@
+---
+title: 'The "Premium Model" of Interactive Entertainment: A Statistical Analysis of the Gaming Industry (1980 - 2016)'
+author: "Evan Aldrich"
+date: "2024-04-29"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE)
+library(tidyverse)
+library(ggplot2)
+library(modelr)
+library(rsample)
+library(mosaic)
+library(foreach)
+library(caret)
+library(dplyr)
+library(gamlr)
+library(glmnet) # For lasso regression
+library(pROC) # For ROC curve analysis
+
+```
+
+# Abstract
+Summarize your question, your methods, your results, and your main concousions in a few hundred words or less.
+
+# Introduction
+Introduce the Question you are trying to answer at a reasonable level of detail. Give background and motivation for why it's important.
+
+|      In 1971, the first commercial video game "Computer Space" was released in what would now be called an arcade cabinet. Today, less than 55 years later, the gaming industry has grown to become the highest-grossing entertainment industry in the world. It now surpasses the gross revenues of the movie and music industries combined as well as that of most printed media. Today, anyone can participate in the gaming industry, also known as the interactive entertainment industry, by being what is called an indie dev or an independent developer. Presently, there are many different ways of pricing a game, whether that's free to play, play to earn, subscription-based, or live service. Additionally, mobile games on smartphones play a huge role in the growth of the interactive entertainment sphere now accounting for about half of annual industry revenue. These XXXXXXX developments provide interesting economic questions that warrant further investigation into optimal pricing, mechanism design, and the industrial organization of the space.
+
+|        This report will be analyze the sales of games that follow the prevalent model throughout the industry's history, called the premium model. In the premium model, players are charged a flat positive price for the game, and after paying that price, they have access to the full game for the product's lifetime. This is the same pricing most physical products bought at a store would have. This analysis seeks to find the strongest predictive model for how well a premium-priced console or computer game would sell in North America and other regions of the world based on data available from 1980 to 2016. Finding the "premium model" for predicting game sales and game ratings. The report also includes an exploratory analysis of whether particular genres, publishers, or platforms consistently outperform others in sales.
+
+# Methods
+Describe your data set and your methods you will use to analyze it.
+
+|        The data set that I will be analyzing can be found on <https://www.kaggle.com/datasets/sidtwr/videogames-sales-dataset/data>. It lists 16,720 game releases for 11,563 different games that were released on Consoles or on PCs. Each release/observation sold at least 10,000 copies between 1980 and December 22nd 2016 which is most of the industry's history. Due to the nature of the data set, the games listed do not include mobile games, and most if not all of the games listed follow the premium pricing model mentioned in the introduction.The data set has 7 categorical variables and 10 continuous variables. These variables are: 
+
+Name: The name of the game
+
+Platform: what platform was the game released on       (Atari 2600 to PS4/Xbox One) 
+
+Year: The year was the game released      (1980 to 2016)
+
+Genre: the genre of the game      (Strategy, Action, etc.)
+
+Publisher: the publishing studio of the game      (Activision, Nintendo, etc.)
+
+NA_Sales: sales in North America 
+
+EU_Sales: sales in the European Union
+
+JP_Sales: sales in Japan
+
+Other_Sales: sales in the rest of the world
+
+Global_scales: global sales
+
+Critic_Score: average critics score on <https://www.metacritic.com/> (1 - 100)
+
+Critic_Count: number of critics in the score
+
+User_Score: average user score on <https://www.metacritic.com/> (1 - 100)
+
+User_Count: number of users in the average score
+
+Developer: The studio that developed the game
+
+Rating: Age rating provided by the ESRB   (E for everyone, M for mature, etc.)
+
+
+# Results
+Tables, figures, and text that illustrates your findings. Keep the focus on the numbers here. You will interpret your results in the next section.
+
+# Conclusion
+Interpret what you found. What are the main lessons we should take away from your report.
+
+# Appendix
+Optional. Any details (figures, etc.) that didn't fit well with the main report that you feel are important.
+
+
+link by: <http://rmarkdown.rstudio.com>.
+
+bold by: **Knit**
+
+```{r}
+
+vgchart = read.csv("vgchartz.csv")
+vgchartfilt = vgchart %>% filter(!is.na(total_sales) & total_sales != "")
+vgchartfilt
+
+
+vgsales = read.csv("vgsales2016.csv")
+#head(vgsales)
+
+#ggplot(vgsales) + geom_point(aes(x=Year, y=Global_Sales))
+#ggplot(vgsales) + geom_histogram(aes(Global_Sales))
+```
