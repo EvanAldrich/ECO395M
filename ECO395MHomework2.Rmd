@@ -1,0 +1,394 @@
+---
+title: "ECO395MHomework2"
+author: "Evan Aldrich, Chenxin Zhu, Somin Lee"
+date: "2024-02-23"
+output: md_document
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(ggplot2)
+library(modelr)
+library(rsample)
+library(mosaic)
+library(foreach)
+library(caret)
+library(dplyr)
+library(gamlr)
+library(glmnet) # For lasso regression
+library(pROC) # For ROC curve analysis
+```
+
+# Q1
+## finding best linear model
+
+lm2 = base modeal (made in class)
+
+lm_a = get rid of insignificant variables fireplaces, fuel from lm2
+
+lm_b = lm_a + landvalue*newconstruction
+
+lm-c = lm_b + lotSize*landValue
+
+lm_d = lm_b + lotSize*livingArea
+
+lm_e = lm_b + landValue*livingArea
+
+```{r cars, eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+data(SaratogaHouses)
+finding_best_lm = do(100)*{
+  saratoga_split = initial_split(SaratogaHouses, prop=0.8)
+  saratoga_train = training(saratoga_split)
+  saratoga_test = testing(saratoga_split)
+  
+  lm2 = lm(price ~ . - pctCollege - sewer - waterfront - landValue - newConstruction, data=saratoga_train)
+  rmse2 = rmse(lm2, saratoga_test)
+  
+  lm_a = lm(price ~ . - pctCollege - sewer - waterfront - landValue - newConstruction - fireplaces - fuel, data = saratoga_train)
+  rmse_a = rmse(lm_a, saratoga_test)
+  
+  lm_b = lm(price ~ . - pctCollege - sewer - waterfront - fireplaces - fuel +(landValue*newConstruction), data = saratoga_train)
+  rmse_b = rmse(lm_b, saratoga_test)
+  
+  lm_c = lm(price ~ . - pctCollege - sewer - waterfront - fireplaces - fuel +(landValue*(newConstruction+lotSize)), data = saratoga_train)
+  rmse_c = rmse(lm_c, saratoga_test)
+  
+  lm_d = lm(price ~ . - pctCollege - sewer - waterfront - fireplaces - fuel +(landValue*newConstruction) +(lotSize*livingArea), data = saratoga_train)
+  rmse_d = rmse(lm_d, saratoga_test)
+  
+  lm_e = lm(price ~ . - pctCollege - sewer - waterfront - fireplaces - fuel +(landValue*(newConstruction+livingArea)), data = saratoga_train)
+  rmse_e = rmse(lm_e, saratoga_test)
+  
+  
+  c(rmse2,rmse_a,rmse_b,rmse_c,rmse_d,rmse_e)
+}
+
+a = data.frame(colMeans(finding_best_lm))
+rownames(a) <- c("lm2","lm_a","lm_b","lm_c","lm_d","lm_e")
+colnames(a) <- "Avg of RMSE"
+a
+```
+
+We can see above that our model lm_b outperforms lm2 which was the "medium" model discussed in class. This new model removes the fireplace and fuel variables from lm2 and includes the interaction effect between new construction and land value as well as the interaction between land value and lot size. This model will be compared to a K nearest neighbors regression model for price with appropriately scales variables that has an optimal k value that is provided below. The K nearest neighbor regression regressed on all variables except for pctCollege, sewer, waterfront, fireplaces, or fuel.
+
+
+```{r pressure, echo=FALSE}
+#(1) find optimal K
+knn_saratoga_split = initial_split(SaratogaHouses, prop = 0.8)
+knn_saratoga_train = training(knn_saratoga_split)
+knn_saratoga_test = testing(knn_saratoga_split)
+
+## construct the training and test set feature matrices
+Xtrain = model.matrix(~ . - pctCollege - sewer - waterfront - fireplaces - fuel - 1, data=knn_saratoga_train)
+Xtest = model.matrix(~ . - pctCollege - sewer - waterfront - fireplaces - fuel - 1, data=knn_saratoga_test)
+
+ytrain = knn_saratoga_train$price
+ytest = knn_saratoga_test$price
+
+## rescale using training set scales
+scale_train = apply(Xtrain, 2, sd)
+Xtilde_train = scale(Xtrain, scale=scale_train)%>%as.data.frame()
+Xtilde_test = scale(Xtest, scale=scale_train)%>%as.data.frame()
+
+## set the grid of k 
+k_grid=2:150
+
+## loop to get rmse for each k value
+smallest_k = foreach(i = k_grid, .combine='c') %do% {
+  knn_k=knnreg(price ~ age, data=Xtilde_train, k=i)
+  rmse_k=rmse(knn_k,Xtilde_test)
+  }%>% as.data.frame()
+
+# find k value which has the minimum value of rmse
+best_k=which(smallest_k == min(smallest_k))
+
+best_k
+```
+
+In our comparison we look at the average of the out-of-sample root mean squared error after running both the knn regression and linear model through 50 train-test-splits.
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+#(2) compare LM and KNN
+
+compare_two_model= do(50)*{
+  compare_two_split = initial_split(SaratogaHouses, prop = 0.8)
+  compare_two_train = training(compare_two_split)
+  compare_two_test = testing(compare_two_split)
+  
+  Xtrain=model.matrix(~ . - pctCollege - sewer - waterfront - fireplaces - fuel - 1, data=compare_two_train)
+  Xtest=model.matrix(~ . - pctCollege - sewer - waterfront - fireplaces - fuel - 1, data=compare_two_test)
+  
+  ytrain=compare_two_train$price
+  ytest=compare_two_test$price
+  
+  scale_train = apply(Xtrain, 2, sd)
+  Xtilde_train = scale(Xtrain, scale=scale_train)
+  Xtilde_test = scale(Xtest, scale=scale_train)
+  
+  Xtilde_train = Xtilde_train %>% as.data.frame()
+  Xtilde_test = Xtilde_test %>% as.data.frame()
+  
+  knn_compare=knnreg(price ~ ., data=compare_two_train, k=best_k)
+  rmse(knn_compare,compare_two_test)
+  
+  
+  lm_compare = lm(price ~ . - pctCollege - sewer - waterfront - fireplaces - fuel +(landValue*newConstruction), data=compare_two_train)
+  rmse(lm_compare,compare_two_test)
+  
+  c(rmse(knn_compare,compare_two_test),rmse(lm_compare,compare_two_test))
+  
+}
+
+b <- data.frame(colMeans(compare_two_model))
+rownames(b) <- c("KNN","Linear model")
+colnames(b) <- "Avg of RMSE"
+b
+```
+
+As we can see,The linear model certainly, on average, outperformed the KNN regression in terms of average root mean squared error. We have learned from this case study that for a particular price-modeling strategy, it is important to include potentially relevant interaction effects involving the value of the land that the property is situated on. This effect changes when its new construction or when the lot is a different size. We can also see that the KNN regression has weaker performance than the in class "medium" model. this this is likely due to the difference between the meaning of an increase or decreases in units varies greatly depending on the variable in question, even though the data is demeaned and scaled. For example, an increase in bathrooms has a very different effect inthe change in house price than the increase in the square footing which may include the bathroom size. Due to this inconsistency, looking in a n-dimensional space for the values that are numerically closer to each other overall may not provide an accurate descriptor of similar houses. However this differences in partial effects would be picked up as the coefficients in the linear model. 
+
+# Q2: Classification and retrospective sampling
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+german_credit = read.csv("german_credit.csv")
+
+pd_history = german_credit%>%
+  group_by(history)%>%
+  summarise(default_prob = mean(Default))%>%as.data.frame()
+
+ggplot(pd_history)+
+  geom_col(aes(x = history, y = default_prob))+
+  labs(x = "Credit history", y = "Default probability",
+       title = "Default probability by credit history")
+
+```
+
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+#(2) logistic regr : 
+# Even though the effect of having "good" history is unable to be distinguished from the intercept, 
+# better credit history has higher default probability in the plot and glm both
+# It is inappropriate result in the light of predicting PD
+# It is not ramdom sample, but collected from defaulted loans and similar loans with them.
+# That's why the proprotion of "good" is so low(8.9%), and it causes biased prediction.
+# proposal : random sampling
+logit_default = glm(Default ~ duration + amount + installment + age + history + purpose + foreign, 
+                    data = german_credit, family = 'binomial')
+coef(logit_default)
+#str(german_credit)
+#table(german_credit$purpose)
+```
+
+We have provided above, a par plot measuring the probability of defaulting on the loans for each section of credit history as well as logistic regression that predicts the default probability using the variables duration, amount, installment, age, history, purpose, and foreign. Interestingly, and counter intuitively, we would predict in the logistic regression that, holing all else the same, that we expect someone moving from good credit history to bad or terrible credit history would decrease the chances of defaulting. Similarly, we see in the bar plot, the better the credit history, the higher the chances of defaulting are. This should likely not be the case as a better credit history means the borrower consistently pays off debt in time. Therefore, this would not be a good model to predict defaults in screening prospective loan customers. We believe that this contradiction has resulted from the experiment design process. Because there are so few defaults, artificially inflating the proportion of defaults in the data set is likely changes the proportions of the good credit history category using a data collection process that is not random. A better representation of default probabilities would result from random sampling of all loans offered rather than oversampling defaults. The bank need need to include more data in random sampling set if there are such few defaults at this bank. Collecting too little data may result in no defaults in the set.    
+
+
+# Q3 Children and hotel reservations
+### Model building
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+
+hotels_dev = read.csv("hotels_dev.csv")
+hotels_val = read.csv("hotels_val.csv")
+
+hotels_dev = hotels_dev%>%
+  filter(reserved_room_type != "L") # it is only 2 cases but it causes error when it is not included in training set 
+
+# (1) model building : it sometimes shows error due to room type(L), then keep trying until it works!!
+compare_three_model= do(50)*{
+  hotels_dev_split = initial_split(hotels_dev, prop = 0.8)
+  hotels_dev_training = training(hotels_dev_split)
+  hotels_dev_testing = testing(hotels_dev_split)
+
+## baseline1 : market_segment, adults, customer_type, is_repeated_guest ; no predict child !!
+base1 = lm(children ~ market_segment + adults + customer_type + is_repeated_guest, data = hotels_dev_training)
+
+phat_test_base1 = predict(base1, hotels_dev_testing)
+yhat_test_base1 = ifelse(phat_test_base1>0.5,1,0)
+confusion_out_1 = table(child_Y = hotels_dev_testing$children, child_Yhat = yhat_test_base1)
+out_occuracy_1 = sum(diag(confusion_out_1))/sum(confusion_out_1)
+
+## baseline2 : - arrival_date 
+
+base2 = lm(children ~ . - arrival_date, data = hotels_dev_training)
+phat_test_base2 = predict(base2, hotels_dev_testing)
+yhat_test_base2 = ifelse(phat_test_base2>0.5,1,0)
+confusion_out_2 = table(child_Y = hotels_dev_testing$children, child_Yhat = yhat_test_base2)
+out_occuracy_2 = sum(diag(confusion_out_2))/sum(confusion_out_2)
+
+## best_model = base 2 + interaction
+best_model = lm(children ~ . - arrival_date + adults*(assigned_room_type + total_of_special_requests) + booking_changes*meal, data = hotels_dev_training)
+phat_test_best = predict(best_model, hotels_dev_testing)
+yhat_test_best = ifelse(phat_test_best>0.5,1,0)
+confusion_out_best = table(child_Y = hotels_dev_testing$children, child_Yhat = yhat_test_best)
+out_occuracy_best = sum(diag(confusion_out_best))/sum(confusion_out_best)
+
+c(out_occuracy_1,out_occuracy_2,out_occuracy_best)}
+
+out_occuracy_avg = data.frame(colMeans(compare_three_model))
+rownames(out_occuracy_avg) = c("base1","base2","best")
+colnames(out_occuracy_avg) = "out-of-sample accuracy rate"
+
+out_occuracy_avg
+```
+
+Above are the averages of out-of-sample accuracy rates across 50 train-test-splits for the two base models and a third model which is the 2nd model plus the interaction effects of adults on room_type and special_requests, also, the interaction effect of booking changes with meal. We see that we are able to correctly identify if a child will arrive with the parents about 93.6% of the time.  
+
+### Model validation: step 1
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+# (2) model validation : step 1
+
+## ROC for best model from the previous part
+
+phat_val_best = predict(best_model,hotels_val)
+
+tpr = foreach(i=1:90, .combine='c') %do% {
+  yhat_val_best=ifelse(phat_val_best >= (i/100), 1, 0)
+  confusion_val_best=table(y=hotels_val$children, yhat=yhat_val_best)
+  FN=confusion_val_best[2,1]
+  TP=confusion_val_best[2,2]
+  TPR=TP/(FN+TP)
+  TPR
+}
+
+
+fpr = foreach(i = 1:90, .combine = 'c') %do% {
+  yhat_val_best = ifelse(phat_val_best >= (i/100), 1, 0)
+  confusion_val_best = table(y=hotels_val$children, yhat=yhat_val_best)
+  TN = confusion_val_best[1,1]
+  FP = confusion_val_best[1,2]
+  FPR = FP/(TN+FP)
+}
+
+roc_data = data.frame(tpr,fpr)
+ggplot(roc_data)+
+  geom_line(aes(x=fpr, y=tpr)) +
+  labs(title="ROC curve for best linear model",
+       x="FPR",
+       y="TPR")
+```
+
+Using the third model mentioned previously, here we see the ROC curve on the validation data set as we vary the classification threshold from 0 in the bottom left to 1 in the top right. 
+
+### Model validation: step 2
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+# (3) model validation : step 2
+
+##1. predict (using best_model above)
+phat_val_best = predict(best_model,hotels_val)
+yhat_val_best = ifelse(phat_val_best >=0.5, 1, 0)
+
+##2. divide 20 folds and sum up predicted probabilites in each fold
+hotels_val = cbind(hotels_val,phat_val_best,yhat_val_best)
+
+hotels_val = hotels_val %>%
+  mutate(fold=rep(1:20, length.out = nrow(hotels_val)) %>% sample())
+
+
+compare_children2 = hotels_val%>%
+  group_by(fold)%>%
+  summarize(total_count = n(),
+            exp_children = sum(phat_val_best)%>%round(1),
+            actual_children = sum(children == 1))%>%as.data.frame()
+
+compare_children2
+```
+
+As we can see in the table above, for each of the 20 folds of the data we have the expected number of children and the actual number. In some of the folds we get very close (within 0.1 child in folds 5 and 9) and other times a little bit further way (about 5 off in fold 3). Within each of the 20 folds it seems that we don't have our 93.6% accuracy when we use the same data set to train and test in. However, the fact that we are within 5 children every time, it seems this model would be quite helpful in predicting the total number of bookings with children especially because of how quickly this runs, it could provide some helpful insight for a hotel manager when it comes to resource allocation for each day.    
+
+# Q4 Mushroom classification
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+# data processing
+mush = read.csv('mushrooms.csv')
+mush = na.omit(mush)
+# Remove columns with only one unique value (including factors with one level)
+mush = mush[sapply(mush, function(x) length(unique(x)) > 1)]
+# Convert all categorical variables to factors
+mush[] <- lapply(mush, factor)
+```
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+# Convert factors to dummy variables
+# caret's dummyVars function can be used for one-hot encoding
+dummies <- dummyVars(" ~ .", data = mush)
+mushrooms_transformed <- predict(dummies, newdata = mush)
+
+# Convert to data frame
+mushrooms_df <- data.frame(mushrooms_transformed)
+# Separate features and target variable
+y <- mushrooms_df[, "class.e"] # based on target variable
+X <- mushrooms_df[, -1] # Exclude the target variable, selects all columns except the first one
+
+# Check dimensions
+#dim(X)
+#length(y)
+```
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+# (1)  Model Training : Lasso-penalized logistic regression 
+# Use lambda to train the final lasso-penalized logistic regression model on the entire training set
+# (1)  Splitting data into training (80%) and test (20%) sets
+trainIndex <- createDataPartition(y, p = .8, list = FALSE)
+X_train <- X[trainIndex, ]
+y_train <- y[trainIndex]
+X_test <- X[-trainIndex, ]
+y_test <- y[-trainIndex]
+
+model <- cv.gamlr(X_train, y_train, family="binomial")
+```
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+# Plot to visualize lambda selection (optional step for visualization)
+plot(model)
+best_lambda <- model$lambda.min # Extract the best lambda
+best_lambda
+```
+The plot above showcases how the deviance changes as lambda changes. We see that the lambda value that minimizes the deviance is presented just below the plot at around 0.005. Using this optimal lambda, we plot the ROC curve to evaluate the out-of-sample performance of our model. We also provide the optimal threshold to set.
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+# (1) Fit the lasso-penalized logistic regression model with the best lambda on training data
+lasso_model <- gamlr(X_train, y_train, family = "binomial", gamma = best_lambda)
+
+# (2) Make predictions on the test set
+predictions <- predict(lasso_model, X_test, type = "response")
+
+# (3) Evaluate the Model with ROC Curve
+# Generating ROC curve and calculating AUC
+roc_result <- roc(y_test, predictions)
+plot(roc_result, main = "ROC Curve")
+
+# Finding optimal threshold
+optimal_threshold = coords(roc_result, "best", ret = "threshold")
+optimal_threshold
+```
+
+
+
+````{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+# (4) Calculate FPR and TPR at the Optimal Threshold
+# Now apply the thresholding logic
+optimal_threshold <- matrix(as.numeric(optimal_threshold), nrow = nrow(predictions), ncol = ncol(predictions), byrow = TRUE)
+
+predictions_binary <- ifelse(predictions > optimal_threshold, 1, 0)
+```
+
+Notice that the ROC curve makes a perfect right angle. This perfect AUC score suggests that the model is highly capable of distinguishing between poisonous and edible mushrooms, with minimal error. The probability threshold is suggested to be 0.5001403. We then use the threshold in making our predictions and the following confusion matrix computes the amount of predictions that were made correctly and incorrectly. As the ROC plot would suggest, there are no incorrect predictions. 
+
+```{r eval=TRUE, echo=FALSE, message=FALSE, warning = FALSE}
+# Create a confusion matrix
+conf_matrix <- table(Predicted = predictions_binary, Actual = y_test)
+
+conf_matrix
+
+# Calculate TPR and FPR from the confusion matrix
+# True Positive Rate (Sensitivity)
+false_positive_rate <- conf_matrix[2, 1] / sum(conf_matrix[2, ])
+true_positive_rate <- conf_matrix[2, 2] / sum(conf_matrix[2, ])
+print(paste("False Positive Rate:", false_positive_rate))
+print(paste("True Positive Rate:", true_positive_rate))
+
+```
+
+Based on this confusion matrix, the FPR is 0 (as there are 0 false positives) and the TPR is 1 (as there are no false negatives). These values indicate that the model is achieving perfect classification performance. It is exceptionally effective at identifying poisonous mushrooms without mistakenly classifying edible ones as poisonous, but perfect performance can also sometimes indicate over fitting.
