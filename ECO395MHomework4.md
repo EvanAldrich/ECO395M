@@ -35,8 +35,8 @@ principal components are composed of.
 
 The first two components, which have the biggest variance, seem to
 distinguish the color of the wine well; they are almost separated; the
-right upper part of the black line represents white wine, and the left
-lower part seems to represent red wine.
+right lower part of the black line represents white wine, and the left
+upper part seems to represent red wine.
 
 ![](ECO395MHomework4_files/figure-markdown_strict/unnamed-chunk-2-1.png)
 

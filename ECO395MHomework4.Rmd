@@ -2,7 +2,7 @@
 title: "ECO395M Homework4"
 author: "Chenxin zhu, Evan Aldrich, Somin Lee"
 date: "2024-04-22"
-output: md_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE,warning = FALSE}
@@ -37,7 +37,7 @@ Also, we can find the loading of the component, and it reflects what the princip
 print(pca_1$rotation)
 ```
 
-The first two components, which have the biggest variance, seem to distinguish the color of the wine well; they are almost separated; the right upper part of the black line represents white wine, and the left lower part seems to represent red wine.
+The first two components, which have the biggest variance, seem to distinguish the color of the wine well; they are almost separated; the right lower part of the black line represents white wine, and the left upper part seems to represent red wine.
 
 ```{r}
 qplot(scores[,1], scores[,2], color=wine$color)+labs(x='Component 1', y='Component 2', title = 'Wine color distribution with principal component')+ geom_abline(slope = 3, intercept = 3.5)
