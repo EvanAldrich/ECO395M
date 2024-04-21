@@ -2,7 +2,7 @@
 title: "ECO395M Homework4"
 author: "Chenxin zhu, Evan Aldrich, Somin Lee"
 date: "2024-04-22"
-output: pdf_document
+output: md_document
 ---
 
 ```{r setup, include=FALSE,warning = FALSE}
@@ -155,7 +155,7 @@ cleaned_data$cluster = kmeans_result$cluster
 
 # Analyze the cluster centroids
 centroids = kmeans_result$centers
-print(centroids)
+#print(centroids)
 
 # Profile and interpret clusters
 aggregate(cleaned_data[, -ncol(cleaned_data)], by=list(cluster=cleaned_data$cluster), mean)
@@ -195,6 +195,8 @@ loadings <- as.data.frame(pca_result$rotation)
 #print(head(loadings[order(abs(loadings$PC2), decreasing = TRUE), ]))
 
 ```
+The above output show the values associated with each of the centroids of each of the clusters. We used, this along with other evaluations of other points in the cluster and the analysis of what makes up principle components 1 and 2 to segment the market into these three market clusters described below.
+
 
 ### Step 4: 
 Labeling Clusters - Market Segmentation
@@ -215,7 +217,6 @@ cleaned_data$cluster_label <- cluster_labels[cleaned_data$cluster]
 ```
 
 How they might position their brand to maximally appeal to each market segment: 
-Customer segmentation advice:
 
 #### 1:Community-Focused Cluster:
 Cluster 1 High on PC1, Low on PC2: This cluster would be characterized by users with strong community and family values who are less engaged in activities like sharing photos, cooking, or personal fitness. We chose to label this cluster "Community & Family-Focused." This segment values community and traditional activities. "NutrientH20" could position their brand as a traditional, family-friendly product. Marketing campaigns could feature family gatherings, communal events, and emphasize the brand’s role in nurturing these relationships. Sponsorships or partnerships with community organizations, faith-based groups, and local sports teams could also resonate well with this segment. AS this appears to be the majority of their consumers with 2126 consumers in it, it may be important to focus on these consumers.
@@ -319,10 +320,10 @@ Epoch 9, Loss: 0.5310325839008201
 
 Epoch 10, Loss: 0.507780645660004
 
-After this runs, we simply calulate the overall test-set accuracy of the network on test images by the number if got correct over the total images in the test set and got an out of sample accuracy of 79 %. Below are a few examples of the test set images after being rescales.
+After this runs, we simply calculate the overall test-set accuracy of the network on test images by the number it got correct divided by the total number of images in the test set and got an out of sample accuracy of 79 %. Below are a few examples of the test set images after being rescaled.
 
 ![Sample Predictions](HW4Q4ExamplePred.png)
 
-We see that the the categories the model is the least accurate discerning are the vegetation and permanent cropland categories. We provide the confusion matrix below showing of the actual category pictures (y-axis), how many of those categories were predicted to be in each category (x-axis). We see that by far most pictures are accurately placed in the correct category solely based on the RGB values of a scaled version of the picture. This example provides evidence for the robustness of the nerual network as a model to make predictions.
+We see that the the categories the model is the least accurate discerning are the vegetation and permanent cropland categories. We provide the confusion matrix below showing of the actual category pictures (y-axis), how many of those categories were predicted to be in each category (x-axis). The number in each box corresponds to the number of images in fouler its its row that it predicted it should be in the fouler name of its column. We see that by far most pictures are accurately placed in the correct category solely based on the RGB values of a scaled version of the picture. This example provides evidence for the robustness of the neural network as a model to make predictions.
 
 ![Confusion Matrix](HW4Q4ConfusionMatrix.png)
