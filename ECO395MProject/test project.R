@@ -82,17 +82,20 @@ data2 = read.csv("2013_Video_Games_Dataset.csv")
 data1 = na.omit(data1)
 data2 = na.omit(data2)
 
-merged_data = merge(data1, data2, by = c("Title", "Console"))
-merged_data = na.omit(merged_data)
+vg_data = merge(data1, data2, by = c("Title", "Console"))
+vg_data = na.omit(vg_data)
 
-merged_data = filter(merged_data, Length.Completionists.Rushed > 0)
+vg_data = filter(vg_data, Length.All.PlayStyles.Average > 0)
+write.csv(vg_data, "vg_data.csv")
+
 
 merged_data = filter(merged_data, Length.Main...Extras.Polled > 0)
 merged_data$console = factor(merged_data$console)
 merged_data$Max_Players = factor(merged_data$Max_Players)
 merged_data$Genres = factor(merged_data$Genres)
 merged_data$Title = factor(merged_data$Title)
-write.csv(merged_data, "merged_data.csv")
+
+
 vgs = merged_data %>% filter(US_Sales < 8)
 
 ggplot(vgs) + geom_point(aes(x=Length.All.PlayStyles.Average, y=US_Sales, color = Release.Rating))

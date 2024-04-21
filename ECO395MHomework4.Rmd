@@ -40,7 +40,7 @@ print(pca_1$rotation)
 The first two components, which have the biggest variance, seem to distinguish the color of the wine well; they are almost separated; the right upper part of the black line represents white wine, and the left lower part seems to represent red wine.
 
 ```{r}
-qplot(scores[,1], scores[,2], color=wine$color)+labs(x='Component 1', y='Component 2', title = 'Wine color distribution with principal component')+ geom_abline(slope = -3, intercept = -3.5)
+qplot(scores[,1], scores[,2], color=wine$color)+labs(x='Component 1', y='Component 2', title = 'Wine color distribution with principal component')+ geom_abline(slope = 3, intercept = 3.5)
 
 ```
 
